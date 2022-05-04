@@ -2,7 +2,7 @@
 
 A Maya tool written in Python3 using maya.cmds that allows users to create a curve, a plane, or a poly object based off of the position of a selected group of objects.
 
-![image](https://user-images.githubusercontent.com/43558247/166712818-7f0fad80-68e2-460c-8c49-ab1bfd19383a.png)
+![image](https://user-images.githubusercontent.com/43558247/166718242-3edb3509-d18f-4446-b971-7ae784e52f5d.png)
 
 
 ## Installation and Use
