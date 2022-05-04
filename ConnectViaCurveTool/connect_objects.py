@@ -3,6 +3,7 @@
 
 # Instructions: to run, navigate to execute_tool.py and run the file
 
+from ctypes import c_uint16
 from PySide2.QtCore import *
 from PySide2.QtGui import *
 from PySide2.QtUiTools import *
@@ -21,11 +22,12 @@ import random
 
 class Transform():
     def __init__(self):
-        self.radius = 0.0
         self.connecting = None
-        self.shape = None
-        self.order = None
+        self.isPlane = False
+        self.order = False
         self.axis = None
+        self.height = 1
+        self.extrudeVal = 0
 
 # show gui window
 
@@ -46,6 +48,7 @@ def showWindow():
     ui.setWindowFlags(Qt.Window)
     ui.setWindowTitle('Connect Via Geometry')
     ui.setObjectName('Connect_Via_Geo')
+    s.num_hieght.setValue(1.0)
     ui.setWindowFlags(Qt.Window | Qt.WindowStaysOnTopHint)
 
     t = Transform()  # transform attribute
@@ -66,38 +69,43 @@ def showWindow():
         # show current selected objects as a list of text on gui
         ui.connecting_objs.setText(list_str)
 
-
-    #sort selected objects changed function
-    def set_sort_selected(s):
-        isChecked = ui.sort_checkbox.checkState()
-        if isChecked:
-            t.order = "sort"
     
 
-    #snap to y side of object
-    def set_curve(c):
-        t.shape = "curve"
+    #toggle is curve is a plane
+    def set_plane(c):
+        t.isPlane = not t.isPlane
+
+    #set number of times to duplicate
+    def set_height(h):
+        t.height = float(h)
+
+    #set number of times to duplicate
+    def set_num_extrude_val(v):
+        t.extrudeVal = float(v)
 
        
+
     #snap to x side of object
     def set_X(x1):
-        isChecked = ui.y_radio.checkStateSet() or ui.z_radio.checkStateSet()
+        isChecked = ui.x_radio.isChecked()
         if isChecked:
             t.axis = "X"
+            t.order = True
 
     #snap to y side of object
     def set_Y(y1):
-        isChecked = ui.x_radio.checkStateSet() or ui.z_radio.checkStateSet()
+        isChecked = ui.y_radio.isChecked()
         if isChecked:
             t.axis = "Y"
-            
+            t.order = True
+      
     #snap to y side of object
     def set_Z(z1):
-        isChecked = ui.x_radio.checkStateSet() or ui.y_radio.checkStateSet()
+        isChecked = ui.z_radio.isChecked()
         if isChecked:
             t.axis = "Z"
+            t.order = True
 
-    # get the distance the 3D point is away from (0,0,0)
 
     # Python3 implementation of QuickSort
     # quicksort helper
@@ -154,10 +162,6 @@ def showWindow():
             ui.warnings.setText(
                 "<font color='red'>Warning:Please set at least 1 connecting object.</font>")
             return
-        elif t.shape == None:
-            ui.warnings.setText(
-                "<font color='red'>Warning:Please select a geometry type to create.</font>")
-            return
 
         else:  # all proper fields have been set
             ui.warnings.setText("")
@@ -165,51 +169,59 @@ def showWindow():
         
         selected_centers = [] #list of selected items to connect
 
-        if(t.shape == "curve"):
-            # draw a curve that runs through the pivot point of each object
-            for obj in t.connecting:
-                    # Get the center of the bounding box of obj in world space and append to the list
-                point = cmds.objectCenter(cmds.ls(obj)[0], gl=True)
-                selected_centers.append(point)
+        # draw a curve that runs through the pivot point of each object
+        for obj in t.connecting:
+                # Get the center of the bounding box of obj in world space and append to the list
+            point = cmds.objectCenter(cmds.ls(obj)[0], gl=True)
+            selected_centers.append(point)
+        print(t.order)
 
-            print(selected_centers)
-            if(t.order == "sort"):
-                # sort based on selected axis
-                if(t.axis == "X"):
-                    quick_sort(0, len(selected_centers) - 1, selected_centers, 0)
-                elif(t.axis == "Y"):
-                    quick_sort(0, len(selected_centers) - 1, selected_centers, 1)
-                elif(t.axis == "Z"):
-                    quick_sort(0, len(selected_centers) - 1, selected_centers, 2)
+        if t.order is True:
+            print("hello")
+            # sort based on selected axis
+            if(t.axis == "X"):
+                quick_sort(0, len(selected_centers) - 1, selected_centers, 0)
+            elif(t.axis == "Y"):
+                quick_sort(0, len(selected_centers) - 1, selected_centers, 1)
+            elif(t.axis == "Z"):
+                quick_sort(0, len(selected_centers) - 1, selected_centers, 2)
+        print(selected_centers)
 
-            #create the curve
-            cmds.curve(p =  selected_centers) 
+
+        #create the curve and it is selected
+        c1 = cmds.curve(p =  selected_centers) 
+        #center pivot
+        center = cmds.objectCenter(c1, gl = True)
+        cmds.xform(c1, pivots = center)
+
+
+        if t.isPlane:
+            #bevel curve and delete original
+            b1 = cmds.bevel(c1, ch=True, rn=False, po=1, ns=1, js=True, ed=t.height)            
+            cmds.delete(c1)
+            if t.extrudeVal > 0:
+                faceNum= cmds.polyEvaluate(f = True) - 1
+                cmds.polyExtrudeFacet(b1[0] + '.f[0:'+ str(faceNum) +']', ch=True, kft=True, ltz=t.extrudeVal)
 
 # Close dialog
-
     def close():
         ui.done(0)
+        
 
     # connect buttons to functions
-    # ui.center_button.clicked.connect(partial(select_surface_object))
     ui.connecting_button.clicked.connect(partial(select_objects_to_connect))
-    # ui.radius_box.valueChanged.connect(partial(set_radius))
+    #ui.apply_button.clicked.connect(partial(apply))
+    #ui.x_check.stateChanged.connect(partial(set_X))
+    #ui.y_check.stateChanged.connect(partial(set_Y))
+    #ui.z_check.stateChanged.connect(partial(set_Z))
     ui.apply_button.clicked.connect(partial(apply))
     ui.x_radio.toggled.connect(partial(set_X))
     ui.y_radio.toggled.connect(partial(set_Y))
     ui.z_radio.toggled.connect(partial(set_Z))
-    # ui.apply_button.clicked.connect(partial(apply))
-    # ui.x_radio.toggled.connect(partial(set_X))
-    # ui.y_radio.toggled.connect(partial(set_Y))
-    # ui.z_radio.toggled.connect(partial(set_Z))
-    # ui.uniform_checkbox.stateChanged.connect(partial(set_scatter_uniform_outline))
-    ui.sort_checkbox.stateChanged.connect(partial(set_sort_selected))
-    # ui.random_fill_checkbox.stateChanged.connect(partial(set_scatter_random_fill))
     ui.close_button.clicked.connect(partial(close))
-    # ui.duplicate.stateChanged.connect(partial(set_duplicate))
-    # ui.num_duplicate.valueChanged.connect(partial(set_num_duplicate))
-    ui.curve_radio.toggled.connect(partial(set_curve))
-    #ui.shapeGrp.buttonToggled.connect(partial(set_curve))
+    ui.plane_check.stateChanged.connect(partial(set_plane))
+    ui.num_height.valueChanged.connect(partial(set_height))
+    ui.num_extrudeVal.valueChanged.connect(partial(set_num_extrude_val))
     
 
     # show the QT ui
