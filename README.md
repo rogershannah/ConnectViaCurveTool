@@ -5,6 +5,11 @@ A Maya tool written in Python3 using maya.cmds that allows users to create a cur
 ![image](https://user-images.githubusercontent.com/43558247/166718242-3edb3509-d18f-4446-b971-7ae784e52f5d.png)
 
 
+
+https://github.com/rogershannah/ConnectViaCurveTool/assets/43558247/d4fd6630-8d83-467a-8a46-9ee0265c32ec
+
+
+
 ## Installation and Use
 1. Download the files in zip folder
 
